@@ -1,16 +1,13 @@
-Pure javascript template engnie
+Dotpl-JS
 ===============================================
 *Dotpl-JS* is a pure javascript template engine.
 There are three simple API only.
 
-* dotpl.applyTpl(tpl, data, renderer)
-Apply the template using the json data,then return the view
+* Apply the template using the json data,then return the view:```dotpl.applyTpl(tpl, data, renderer)```
 
-* dotpl.applyRTpl(url, data, cb, renderer)
-Apply the remote template,return the view from the callback function
+* Apply the remote template,return the view from the callback function:```dotpl.applyRTpl(url, data, cb, renderer)```
 
-* dotpl.diving(key,data)
-Locate the data using the string "key1.key2.key2"
+* Locate the data using the string "key1.key2.key2":```dotpl.diving(key,data)```
 
 ### Samples
 * General

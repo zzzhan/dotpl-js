@@ -1,6 +1,6 @@
 /*
- * Dotpl-JS v1.1
- * http://code.google.com/p/dotpl-js/
+ * Dotpl-JS v1.2
+ * https://github.com/zzzhan/dotpl-js
  * (c) 2014 by Chunzhan.He. All rights reserved.
  * chunzhan.he@gmail.com
  */
@@ -57,36 +57,49 @@ var dotpl = function() {
 		return xmlhttp;
 	}
 	function _applyTpl(tpl, data, renderer, pk, parent, thiz){
-		var regx = /<(tpl\d?)\s+(\w+)\s*=\s*(['|"]{1})([^\3]+?)\3\s*>([\s\S]+?)<\/\1>/ig;
-		if(regx.test(tpl)) {
-			tpl = tpl.replace(regx, function($0,$1,$2,$3,$4,$5){
+		//var regx = /<(tpl\d?)\s+(\w+)\s*=\s*(['|"]{1})([^\3]+?)\3\s*>([\s\S]+?)<\/\1>/ig;
+		var __regx = /<(tpl\d?)\s+([^>]+?)>([\s\S]+?)<\/\1>/ig;
+		if(__regx.test(tpl)) {
+			tpl = tpl.replace(__regx, function($0,$1,$2,$3,$4,$5){
 				var output = "";
-				if($2!=null) {
-					if($2.toUpperCase()=="FOR") {
+				var kv = null;
+                var attr = {};
+            	var __subg = /(\w+)\s*=\s*(['|"]{1})([^\2]+?)\2\s*/ig;
+                while((kv=__subg.exec($2))!=null) {
+                    attr[kv[1].toLowerCase()]=kv[3];
+                }
+				//if($2!=null) {
+					if(attr['for']!=null) {
 						var arr = data;
 						if($4!=".") {
-							arr = _diving($4,data);
+							arr = _diving(attr['for'],data);
 						}
-						for(var i=0;arr!=null&&i<arr.length;i++) {
-							var item = {};
-							if(typeof(arr[i])!='object') {
-								item.__val = arr[i];
-							} else {
-								item = arr[i];
+						if(arr!=null&&arr.length>0) {
+							for(var i=0;i<arr.length;i++) {
+								var item = {};
+								if(typeof(arr[i])!='object') {
+									item.__val = arr[i];
+								} else {
+									item = arr[i];
+								}
+								item.__offset = i;
+								output+=_applyTpl($3,item,renderer,attr['for'],arr, thiz);
 							}
-							item.__offset = i;
-							output+=_applyTpl($5,item,renderer,$4,arr, thiz);
+						} else {
+			                if(attr['emptytext']!=null) output = attr['emptytext'];
 						}
-					} else if($2.toUpperCase()=="IF") {
+					} else if(attr['if']!=null) {
 						try {
-							if(eval(applyTpl($4,data))) {
-								return _applyTpl($5, data, renderer, pk, parent, thiz);
-							}	
+							if(eval(applyTpl(attr['if'],data))) {
+								return _applyTpl($3, data, renderer, pk, parent, thiz);
+							} else {
+				                if(attr['emptytext']!=null) output = attr['emptytext'];
+							}
 						} catch(e) {
-							alert($4||e.message||e);
+							alert(attr['if']||e.message||e);
 						}			
 					}
-				}
+				//}
 				return output;         
 			});
 		}

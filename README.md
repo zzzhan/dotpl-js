@@ -25,10 +25,13 @@ alert(dotpl.applyTpl("hello ${val},i ${action} you", {val:"town", action:'love'}
 ```
 * Template using IF logic:
 ```javascript
-alert(dotpl.applyTpl("hello ${val}, <tpl if=\"'${action}'=='love'\">i ${action} you</tpl>"
+alert(dotpl.applyTpl(
+	"hello ${val}, <tpl if=\"'${action}'=='love'\">i ${action} you</tpl>"
 	, {val:"town", action:'love'})); 
 
-alert(dotpl.applyTpl("hello ${val},if false<tpl if=\"'${action}'=='love'\">i ${action} you</tpl>"
+alert(dotpl.applyTpl(
+	"hello ${val},<tpl if=\"'${action}'=='love'\""
+	+"emptyText=\"none\">i ${action} you</tpl>"
 	, {val:"town", action:'like'}));
 ```
 * Template using FOR logic:
@@ -48,7 +51,7 @@ alert(dotpl.applyTpl("list:\n<tpl for=\"data\">${__offset} hello ${__val} \n</tp
 * Template using mutil FOR logic:
 ```javascript
 alert(dotpl.applyTpl("list:\n<tpl for=\"data\">${__offset} hello ${key} ${val}\n</tpl>"
-	+ "list2:\n<tpl for=\"data\">${__offset} 1024 ${key} ${val}\n</tpl>"
+	+ "list2:\n<tpl for=\"data\" emptyText=\"none\">${__offset} 1024 ${key} ${val}\n</tpl>"
 	,  {data:[{key:"world", val:'like'},{key:"town", val:'freedom'}]}));
 
 alert(dotpl.applyTpl("<tpl for=\".\">list${__offset} \n <ul><tpl0 for=\"data\"><li>"

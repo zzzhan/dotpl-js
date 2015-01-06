@@ -1,5 +1,5 @@
 /*
- * Dotpl-JS v1.2
+ * Dotpl-JS v1.3
  * https://github.com/zzzhan/dotpl-js
  * (c) 2014 by Chunzhan.He. All rights reserved.
  * chunzhan.he@gmail.com
@@ -20,12 +20,21 @@ var dotpl = function() {
 			try {
 				var val = _diving($1,values);
 				val = (val==null?"":val);
-				if(typeof renderer=='function') {
-					var tmp = renderer.call(thiz==null?this:thiz, $1, val, values, pk, parent);
+				if(typeof val=='boolean') return val;
+				var func = null;
+				if(typeof renderer=='object') {
+					func = renderer.renderer;
+				} else {
+					func = renderer;
+				}
+				if(typeof func=='function') {
+					var tmp = func.call(thiz==null?this:thiz, $1, val, values, pk, parent);
 					return tmp==null?val:tmp;
 				}
 				return val;
-			} catch(e){ alert($1||e.message||e);return null;}
+			} catch(e){
+				alert($1+(e.message||e));
+			}
 		});
 		return view;
 	}
@@ -69,10 +78,16 @@ var dotpl = function() {
                     attr[kv[1].toLowerCase()]=kv[3];
                 }
 				//if($2!=null) {
-					if(attr['for']!=null) {
+                	var forkey = attr['for'];
+					if(forkey!=null) {
 						var arr = data;
-						if($4!=".") {
-							arr = _diving(attr['for'],data);
+						if(forkey!='.') {
+							arr = _diving(forkey,data);
+						}
+						if(typeof renderer=='object') {
+							if(!!renderer.beforeLoop) {
+								arr = renderer.beforeLoop.call(thiz||this, arr, forkey, pk, parent||data);
+							}
 						}
 						if(arr!=null&&arr.length>0) {
 							for(var i=0;i<arr.length;i++) {
@@ -83,20 +98,29 @@ var dotpl = function() {
 									item = arr[i];
 								}
 								item.__offset = i;
-								output+=_applyTpl($3,item,renderer,attr['for'],arr, thiz);
+								if(typeof renderer=='object') {
+									if(!!renderer.skip&&renderer.skip.call(thiz||this, item, forkey, arr, pk, parent||data)) {
+										continue;
+									}
+								}
+								output+=_applyTpl($3,item,renderer,forkey,data, thiz);
 							}
 						} else {
 			                if(attr['emptytext']!=null) output = attr['emptytext'];
 						}
 					} else if(attr['if']!=null) {
 						try {
-							if(eval(applyTpl(attr['if'],data))) {
+							var strflag = _applyTpl(attr['if'],data,renderer, pk, parent, thiz);
+							if(typeof strflag=='string') {
+								strflag = eval(strflag);
+							}
+							if(strflag) {
 								return _applyTpl($3, data, renderer, pk, parent, thiz);
 							} else {
 				                if(attr['emptytext']!=null) output = attr['emptytext'];
 							}
 						} catch(e) {
-							alert(attr['if']||e.message||e);
+							alert(attr['if']+(e.message||e));
 						}			
 					}
 				//}

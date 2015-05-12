@@ -1,0 +1,30 @@
+{
+  "name": "dotpl",
+  "version": "0.1.0",
+  "authors": [
+    "zzzhan <chunzhan.he@gmail.com>"
+  ],
+  "description": "dotpl - A lite template engine",
+  "main": [
+    "dist/dotpl.min.js"
+  ],
+  "keywords": [
+    "javascript template",
+    "template engine",
+    "pure javascript"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/zzzhan/dotpl-js",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    "*.html",
+    "Gruntfile.js",
+    "package.json"
+  ],
+  "dependencies": {
+  }
+}

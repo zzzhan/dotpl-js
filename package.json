@@ -1,0 +1,31 @@
+{
+  "name": "dotpl",
+  "file": "dotpl",
+  "files": [
+    "dist/dotpl.min.js"
+  ],
+  "version": "0.1.0",
+  "description": "dotpl - A lite template engine",
+  "keywords": [
+    "javascript template",
+    "template engine",
+    "pure javascript"
+  ],
+  "scripts": {
+    "test": "node test.js"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.5",
+    "grunt-contrib-clean": "^0.6.0",
+    "grunt-contrib-jshint": "^0.11.2",
+    "grunt-contrib-uglify": "^0.9.1",
+    "matchdep": "^0.3.0"
+  },
+  "bugs": {
+    "url": "https://github.com/zzzhan/dotpl-js/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/zzzhan/dotpl-js.git"
+  }
+}

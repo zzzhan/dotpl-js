@@ -3,14 +3,14 @@ module.exports = function (grunt) {
     pkg: grunt.file.readJSON('package.json'),
     uglify: {
       options: {
-        banner: '/*! <%= pkg.file %> <%= grunt.template.today("yyyy-mm-dd") %> */\n',
+        banner: '/*! <%= pkg.filename %> <%= grunt.template.today("yyyy-mm-dd") %> */\n',
         mangle: {toplevel: true},
         squeeze: {dead_code: false},
         codegen: {quote_keys: true}
       },
       build: {
 		    files: {
-			    'dist/<%= pkg.file %>.min.js':'src/<%=pkg.file %>.js'
+			    'dist/<%= pkg.filename %>.min.js':'src/<%=pkg.filename %>.js'
 		    }
       }
     },
@@ -20,7 +20,7 @@ module.exports = function (grunt) {
       },
       all: [
         'Gruntfile.js',
-        'src/<%=pkg.file %>.js'
+        'src/<%=pkg.filename %>.js'
       ]
 	  },
     clean: ['dist']

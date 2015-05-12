@@ -1,11 +1,16 @@
 {
   "name": "dotpl",
-  "file": "dotpl",
+  "filename": "dotpl",
   "files": [
     "dist/dotpl.min.js"
   ],
+  "main": "dist/dotpl.min.js",
   "version": "0.1.0",
   "description": "dotpl - A lite template engine",
+  "author": {
+    "name": "zzzhan",
+    "email": "chunzhan.he@gmail.com"
+  },
   "keywords": [
     "javascript template",
     "template engine",

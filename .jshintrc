@@ -12,7 +12,8 @@
   "eqnull": true,
   "browser": true,
   "node":true,
+  "validthis":true,
   "globals": {
-    "ActiveXObject":true
+    "ActiveXObject":true	
   }
 }

@@ -2,7 +2,10 @@
  * dotpl-js
  * https://github.com/zzzhan/dotpl-js
  *
+ * Licensed under the MIT license.
  */
+
+'use strict';
 (function() {
 	var _opener = '\\$\\{';
 	var _closer = '\\}';
@@ -15,7 +18,7 @@
 		} while(i<keys.length&&typeof(kv)==='object');
 		return kv;
 	}
-	function _applyMapTpl(tpl, values, renderer, pk, parent, thiz) {	
+	function _applyMapTpl(tpl, values, renderer, pk, parent) {	
 		var re = new RegExp(_opener+'([^'+_closer+']+?)'+_closer, 'ig');///\$\{([^\}]+?)\}/ig;
 		var view = tpl.replace(re, function($0,$1) {
 			try {
@@ -29,7 +32,7 @@
 					func = renderer;
 				}
 				if(typeof func==='function') {
-					var tmp = func.call(thiz==null?this:thiz, $1, val, values, pk, parent);
+					var tmp = func($1, val, values, pk, parent);
 					return tmp==null?val:tmp;
 				}
 				return val;
@@ -49,7 +52,7 @@
 		xmlhttp.onreadystatechange=function() {
 			if (xmlhttp.readyState===4) {
 				try {
-					cb.call(this, xmlhttp.responseText,xmlhttp.status);
+					cb(xmlhttp.responseText,xmlhttp.status);
 				} catch(e){ throw e;}
 			}
 		};
@@ -67,7 +70,7 @@
 		} catch(e){ throw e;}
 		return xmlhttp;
 	}
-	function _applyTpl(tpl, data, renderer, pk, parent, thiz){
+	function _applyTpl(tpl, data, renderer, pk, parent){
 		//var regx = /<(tpl\d?)\s+(\w+)\s*=\s*(['|"]{1})([^\3]+?)\3\s*>([\s\S]+?)<\/\1>/ig;
 		var __regx = /<(tpl\d?)\s+([^>]+?)>([\s\S]+?)<\/\1>/ig;
 		if(__regx.test(tpl)) {
@@ -88,7 +91,7 @@
 						}
 						if(typeof renderer==='object') {
 							if(!!renderer.beforeLoop) {
-								arr = renderer.beforeLoop.call(thiz||this, arr, forkey, pk, parent||data);
+								arr = renderer.beforeLoop(arr, forkey, pk, parent||data);
 							}
 						}
 						if(arr!=null&&arr.length>0) {
@@ -101,24 +104,24 @@
 								}
 								item.__offset = i;
 								if(typeof renderer==='object') {
-									if(!!renderer.skip&&renderer.skip.call(thiz||this, item, forkey, arr, pk, parent||data)) {
+									if(!!renderer.skip&&renderer.skip(item, forkey, arr, pk, parent||data)) {
 										continue;
 									}
 								}
-								output+=_applyTpl($3,item,renderer,forkey,data, thiz);
+								output+=_applyTpl($3,item,renderer,forkey,data);
 							}
 						} else {
 			                if(attr['emptytext']!=null) {output = attr['emptytext'];}
 						}
 					} else if(attr['if']!=null) {
 						try {
-							var strflag = _applyTpl(attr['if'],data,renderer, pk, parent, thiz);
+							var strflag = _applyTpl(attr['if'],data,renderer, pk, parent);
 							if(typeof strflag==='string') {
 								/*jslint evil: true */
 								strflag = eval('Boolean('+strflag+')');
 							}
 							if(strflag) {
-								return _applyTpl($3, data, renderer, pk, parent, thiz);
+								return _applyTpl($3, data, renderer, pk, parent);
 							} else {
 				                if(attr['emptytext']!=null) {output = attr['emptytext'];}
 							}
@@ -130,18 +133,15 @@
 				return output;         
 			});
 		}
-		return _applyMapTpl(tpl, data, renderer, pk, parent, thiz);
+		return _applyMapTpl(tpl, data, renderer, pk, parent);
 	}
 	var dotpl = {
 		diving:_diving,
 		applyTpl:_applyTpl,
-		applyRTpl:function(url, data, cb, renderer, thiz){
+		applyRTpl:function(url, data, cb, renderer){
 			_request(url, function(tpl, status){
 				if(status===200) {
-					if(typeof renderer==='object') {
-						thiz = renderer;
-					}
-					cb.call(thiz==null?this:thiz, _applyTpl(tpl, data, renderer, thiz));
+					cb(_applyTpl(tpl, data, renderer));
 				} else {
 					throw new Error("Error "+status+":"+url);
 				}
@@ -153,7 +153,7 @@
 		}
 	};
     var root = this,
-        previous_dotpl = root.dotpl;
+    previous_dotpl = root.dotpl;
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = dotpl;
@@ -166,4 +166,4 @@
         root.dotpl = previous_dotpl;
         return dotpl;
     };
-}());
+}).call(this);

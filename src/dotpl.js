@@ -9,6 +9,9 @@
 (function() {
 	var _opener = '\\$\\{';
 	var _closer = '\\}';
+	var _tag = 'tpl';
+	var _topener = '<';
+	var _tcloser = '>';
 	function _diving(key,kv) {
 		var keys = key.split("\.");
 		var i = 0;
@@ -72,7 +75,8 @@
 	}
 	function _applyTpl(tpl, data, renderer, pk, parent){
 		//var regx = /<(tpl\d?)\s+(\w+)\s*=\s*(['|"]{1})([^\3]+?)\3\s*>([\s\S]+?)<\/\1>/ig;
-		var __regx = /<(tpl\d?)\s+([^>]+?)>([\s\S]+?)<\/\1>/ig;
+		//var __regx = /<(tpl\d?)\s+([^>]+?)>([\s\S]+?)<\/\1>/ig;
+		var __regx = new RegExp('\\'+_topener+'('+_tag+'\\d?)\\s+([^\\'+_tcloser+']+?)\\'+_tcloser+'([\\s\\S]+?)\\'+_topener+'\\/\\1\\'+_tcloser, 'ig');
 		if(__regx.test(tpl)) {
 			tpl = tpl.replace(__regx, function($0,$1,$2,$3){
 				var output = "";
@@ -147,9 +151,13 @@
 				}
 			});
 		},
-		setDelimiters:function(opener, closer) {
+		setDelimiters:function(opener, closer, tag) {
 			_opener = opener;
 			_closer = closer;
+			tag = tag||'<tpl>';
+			_tag = tag.substring(1, tag.length-1);
+			_topener = tag.substring(0, 1);
+			_tcloser = tag.substring( tag.length-1);
 		}
 	};
     var root = this,

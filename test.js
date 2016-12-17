@@ -7,10 +7,10 @@ console.log(dotpl.applyTpl("hello <tpl for='shapes_group'>{{name}}\n<tpl0 for='g
   "test":"testing",
   "group":[{
     "type":"plus",
-    "name":"Plus {{../test}}"
+    "name":"Plus {{test}}"
   },{
     "type":"minus",
-    "name":"Minus {{/name}}"
+    "name":"Minus {{name}}"
   },{
     "type":"multiply",
     "name":"Multiply"

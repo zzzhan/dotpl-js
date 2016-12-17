@@ -4,52 +4,114 @@
  *
  * Licensed under the MIT license.
  */
+(function(factory){
+  "use strict";
+  if (typeof define === 'function' && define.amd) {
+    define([this], factory);
+  } else if (typeof(module) !== 'undefined' && module.exports) {
+    module.exports = factory(this);
+  } else {
+    var root = window||this,
+    prev_dotpl = root.dotpl,
+	dotpl = factory(root);
 
-'use strict';
-(function() {
-	var _opener = '\\$\\{';
-	var _closer = '\\}';
-	var _tag = 'tpl';
-	var _topener = '<';
-	var _tcloser = '>';
-	function _diving(key,kv, renderer, pk, parent,root) {
-		var ret;
-		if(key.indexOf('/')===0) {
-		  key = key.substring(1);
-		  ret = root||kv;
-		} else if(key.indexOf('../')===0) {
-		  key = key.substring(3);
-		  ret = parent||kv;
-		} else {
-		  ret = kv;
-		}
-		var keys = key.split("\."),i = 0;
+    dotpl.noConflict = function () {
+        root.dotpl = prev_dotpl;
+        return dotpl;
+    };
+    root.dotpl = dotpl;
+    root.Dotpl = dotpl.constructor;
+  }
+}(function(root){
+	var _op = '\\$\\{',
+		_cl = '\\}',
+		_tg = 'tpl',
+		_to = '<',
+		_tc = '>',
+		_keyMapping = {
+		  'ENTER':13
+		},
+		_filters = {
+		  capitalize: function(ss) {
+		    return ss.replace(/^\S/,function(s){return s.toUpperCase();});
+		  },
+		  lowercase: function(ss) {
+		    return ss.toLowerCase();
+		  },
+		  uppercase: function(ss) {
+		    return ss.toUpperCase();
+		  },
+		  reverse: function(ss) {
+		    return ss.split('').reverse().join('');
+		  }
+		};
+	function _diving(key,kv) {
+		var keys = key.split("\.");
+		var i = 0;
 		do {
-			ret = ret[keys[i++]];
-			if(ret==null) {break;}
-		} while(i<keys.length&&typeof(ret)==='object');	
-		if(typeof ret==='string') {
-		  return _applyMapTpl(ret, kv, renderer, pk, parent,root);
-		} else { return ret;}
+			kv = kv[keys[i++]];
+			if(kv==null) {break;}
+		} while(i<keys.length&&typeof(kv)==='object');
+		return kv;
 	}
-	function _applyMapTpl(tpl, values, renderer, pk, parent,root) {	
-		var re = new RegExp(_opener+'([^'+_closer+']+?)'+_closer, 'ig');///\$\{([^\}]+?)\}/ig;
-		var view = tpl.replace(re, function($0,$1) {
+	function _eval(k,kv) {
+	  k = k.replace(/(&gt;)|(&lt;)/g,function(s) { return s==='&gt;'?'>':'<'});
+	  var ret = k.replace(/\$*\w+/ig, function(s) {
+	    if(/\d+/.test(s)) return s;
+	    var v = _diving(s, kv);
+		if(typeof v === 'string') {
+		  v = '\''+v+'\'';
+		}
+		return v==null?s:v;
+	  });
+	  return eval(ret);
+	}
+	function _parseVal($1, values, renderer, pk, parent) {
+		$1 = $1.trim();
+		var keys = $1.split('|'),
+			key = keys[0].trim(),
+			evalflag = /\+|\-|\*|\/|>|<|=/.test(key),
+			val = evalflag?_eval(key,values):_diving(key,values);
+		val = (val==null?"":val);
+		for(var i=1;i<keys.length;i++) {
+		  var k = keys[i].trim(),defFilter = true;
+		  if(typeof renderer==='object') {
+		    if(!!renderer.filters&&!!renderer.filters[k]) {
+		      val = renderer.filters[k](val);
+			  defFilter = false;
+			}
+		  }
+		  if(defFilter&&!!_filters[k]) {
+		    val = _filters[k](val);
+		  }
+		}
+		if(typeof val==='boolean') {return val;}
+		var func = null;
+		if(typeof renderer==='object') {
+			func = renderer.renderer;
+		} else {
+			func = renderer;
+		}
+		if(typeof func==='function') {
+			var tmp = func($1, val, values, pk, parent);
+			return tmp==null?val:tmp;
+		}
+		return val;
+	}
+	function _applyMapTpl(tpl, values, renderer, pk, parent) {
+		var re = new RegExp('<(\\w+)([^>]*)>\\s*'+_op+'([^'+_cl+']+?)'+_cl+'\\s*<\\/\\1>', 'ig'),
+			view = tpl.replace(re, function($0,$1,$2,$3) {
 			try {
-				var val = _diving($1,values, renderer, pk, parent,root);
-				val = (val==null?"":val);
-				if(typeof val==='boolean') {return val;}
-				var func = null;
-				if(typeof renderer==='object') {
-					func = renderer.renderer;
-				} else {
-					func = renderer;
-				}
-				if(typeof func==='function') {
-					var tmp = func($1, val, values, pk, parent);
-					return tmp==null?val:tmp;
-				}
-				return val;
+			  var v = _parseVal($3, values, renderer, pk, parent);
+			  return '<'+$1+$2+' do-v="'+$3.trim()+'">'+v+'</'+$1+'>';
+			} catch(e){
+				throw new Error($1+(e.message||e));
+			}
+		});
+		var re1 = new RegExp(_op+'([^'+_cl+']+?)'+_cl, 'ig');///\$\{([^\}]+?)\}/ig;
+		view = view.replace(re1, function($0,$1) {
+			try {
+			  return _parseVal($1, values, renderer, pk, parent);
 			} catch(e){
 				throw new Error($1+(e.message||e));
 			}
@@ -84,20 +146,12 @@
 		} catch(e){ throw e;}
 		return xmlhttp;
 	}
-	function _applyTpl(tpl, data, renderer, pk, parent, root){
-		//var regx = /<(tpl\d?)\s+(\w+)\s*=\s*(['|"]{1})([^\3]+?)\3\s*>([\s\S]+?)<\/\1>/ig;
-		//var __regx = /<(tpl\d?)\s+([^>]+?)>([\s\S]+?)<\/\1>/ig;
-		var __regx = new RegExp('\\'+_topener+'('+_tag+'\\d?)\\s+([^\\'+_tcloser+']+?)\\'+_tcloser+'([\\s\\S]+?)\\'+_topener+'\\/\\1\\'+_tcloser, 'ig');
-		if(!root) {
-		   root = data;	
-		}
-		if(__regx.test(tpl)) {
-			tpl = tpl.replace(__regx, function($0,$1,$2,$3){
-				var output = "";
-				var kv = null;
-                var attr = {};
-            	var __subg = /(\w+)\s*=\s*(['|"]{1})([^\2]+?)\2\s*/ig;
-                while((kv=__subg.exec($2))!=null) {
+	function _applyTpl(tpl, data, renderer, pk, parent){
+		var re = new RegExp('\\'+_to+'('+_tg+'\\d?)\\s+([^\\'+_tc+']+?)\\'+_tc+'([\\s\\S]+?)\\'+_to+'\\/\\1\\'+_tc, 'ig');
+		if(re.test(tpl)) {
+			tpl = tpl.replace(re, function($0,$1,$2,$3){
+				var output = "",kv = null,attr = {},re1 = /(\w+)\s*=\s*(['|"]{1})([^\2]+?)\2\s*/ig;
+                while((kv=re1.exec($2))!=null) {
                     attr[kv[1].toLowerCase()]=kv[3];
                 }
 				//if($2!=null) {
@@ -105,13 +159,14 @@
 					if(forkey!=null) {
 						var arr = data;
 						if(forkey!=='.') {
-							arr = _diving(forkey,data, renderer, pk, parent,root);
+							arr = _diving(forkey,data);
 						}
 						if(typeof renderer==='object') {
 							if(!!renderer.beforeLoop) {
 								arr = renderer.beforeLoop(arr, forkey, pk, parent||data);
 							}
 						}
+						output+='<do-f do-v="'+forkey+'">';
 						if(arr!=null&&arr.length>0) {
 							for(var i=0;i<arr.length;i++) {
 								var item = {};
@@ -121,25 +176,27 @@
 									item = arr[i];
 								}
 								item.__offset = i;
+								item.$index = i;
 								if(typeof renderer==='object') {
 									if(!!renderer.skip&&renderer.skip(item, forkey, arr, pk, parent||data)) {
 										continue;
 									}
 								}
-								output+=_applyTpl($3,item,renderer,forkey,data,root);
+								output+=_applyTpl($3.trim(),item,renderer,forkey,data);
 							}
 						} else {
 			                if(attr['emptytext']!=null) {output = attr['emptytext'];}
 						}
+						output+='</do-f>';
 					} else if(attr['if']!=null) {
 						try {
-							var strflag = _applyTpl(attr['if'],data,renderer, pk, parent,root);
+							var strflag = _applyTpl(attr['if'],data,renderer, pk, parent);
 							if(typeof strflag==='string') {
 								/*jslint evil: true */
 								strflag = eval('Boolean('+strflag+')');
 							}
 							if(strflag) {
-								return _applyTpl($3, data, renderer, pk, parent,root);
+								return _applyTpl($3.trim(), data, renderer, pk, parent);
 							} else {
 				                if(attr['emptytext']!=null) {output = attr['emptytext'];}
 							}
@@ -151,9 +208,242 @@
 				return output;         
 			});
 		}
-		return _applyMapTpl(tpl, data, renderer, pk, parent,root);
+		return _applyMapTpl(tpl, data, renderer, pk, parent);
 	}
-	var dotpl = {
+	function _isEditable(el) {
+	  var nodeName = el.nodeName.toLowerCase();
+	  return el.nodeType == 1 && (nodeName == "textarea" ||
+			(nodeName == "input" && /^(?:text|email|number|search|tel|url|password)$/i.test(el.type)));
+	}
+	var Dotpl = function(opt) {
+	  var self = this, doc = root.document,
+		  el = opt.el, d = opt.data,tpl;
+	  self._opt = opt;
+	  if(typeof el === 'string') {
+	    if(el.indexOf('#')===0) {
+		  el = doc.getElementById(el.substring(1));
+		} else {
+		  el = doc.getElementsByName(el);
+		}
+	  }
+	  self._el = el;
+	  if(!opt.tpl) {
+	    opt.tpl = self._el.innerHTML;
+	  }
+	  //self._tpl = tpl;
+	  if(!!el) {
+	    el.innerHTML = self.toString();
+	    self._data = {};
+	    self._defineProperty(d);
+	    self._bindSync();
+	    self._binding();
+	  }
+	};
+	Dotpl.prototype = {
+      constructor: Dotpl,
+	  _defineProperty: function(d) {
+	    var self = this;
+		for(var k in d) {
+		  Object.defineProperty(self._data, k, {
+		    get: (function(kk) {
+			  return function () {
+			    return d[kk];
+		      };
+			})(k),
+		    set: (function(kk) {
+			  return function (b) {
+			  var old = d[kk];
+			  d[kk] = b;
+			//self._el.innerHTML = _applyTpl(self._tpl, self._data);
+			  self._dataChanged(kk, b, old);
+		    };
+			})(k)
+		  });
+		  if(Object.prototype.toString.call(d[k]) === '[object Array]') {
+		    self._definePropertyArray(d[k], k);
+		  }
+		}
+	  },
+	  _definePropertyArray: function(arr, k) {
+	    var self = this, oPush = arr.push,
+			oSplice = arr.splice;
+		arr.push = function() {
+          var ret = oPush.apply(this, arguments);
+		  self._onArrayPush(k, arguments);
+		  return ret;
+		};
+		arr.splice = function() {
+          var ret = oSplice.apply(this, arguments);
+		  self._onArraySplice(k, arguments);
+		  return ret;
+		};
+	  },
+	  _dataChanged: function(k,d) {
+	    var self = this, el = self._el,
+			ts = el.querySelectorAll('[do-v='+k+']');
+		//console.log(k+':'+d);
+		for(var i=0;i<ts.length;i++) {
+		  var target = ts[i];
+		  var nodeName = target.nodeName.toLowerCase();
+		  if (_isEditable(target)) {
+			target.value = d;
+		  } else {
+		    target.innerHTML = d;
+		  }
+		}
+	  },
+	  _onArrayPush: function(key, arr) {
+	    var self = this, el = self._el,
+			opt = self._opt,
+			tpl = opt.tpl,
+			ts = el.querySelectorAll('do-f[do-v='+key+']'),
+			re = new RegExp('\\'+_to+'('+_tg+'\\d?)\\s+for=(["|\']?)'+key+'\\2[^\\'+_tc+']*?\\'+_tc+'([\\s\\S]+?)\\'+_to+'\\/\\1\\'+_tc, 'ig'),
+			res,
+			tpls=[];
+		while((res=re.exec(tpl))!=null) {
+		  tpls[tpls.length]=res[3];
+		}
+		for(var i=0;i<ts.length;i++) {
+		  var target = ts[i],
+			  t = tpls[i],s='';
+		  for(var j=0;j<arr.length;j++) {
+		    s+=_applyTpl(t, arr[j]).trim();
+		  }
+		  //console.log(s);
+		  var div = document.createElement('div');
+		  div.innerHTML = s;
+		  var nodes = div.childNodes;
+		  for(var k=0;k<nodes.length;k++) {		
+		    target.appendChild(nodes[k]);
+		  }	
+		}
+	  },
+	  _onArraySplice: function(key, arr) {
+	    var self = this, el = self._el,
+			ts = el.querySelectorAll('do-f[do-v='+key+']');
+		for(var i=0;i<ts.length;i++) {
+		  var target = ts[i],
+			  index = arr[0],
+			  count = arr[1],
+			  i=0,child;
+		  while(!!(child=target.childNodes[index])&&i<count) {
+		    target.removeChild(child);
+			i++;
+		  }
+		}
+	  },
+	  _bindSync: function() {
+		var self = this,
+			data = self._data,
+			opt = self._opt,
+			el = self._el,
+			tpl = opt.tpl,
+			re = /\s+do\-sync=/ig,
+		    res,
+			bind = {};
+		if(re.test(tpl)) {
+		  el.addEventListener('keyup', function(e) {
+		    for (var target=e.target; target && target!=this; target=target.parentNode) {
+			  var field = target.getAttribute('do-sync');
+			  if(!!field) {
+				if(data[field]!==target.value) {
+			      data[field] = target.value;
+				}
+			    break;
+			  }
+		    }
+		  });
+		}
+	  },
+	  _binding: function() {
+		var self = this,
+			opt = self._opt,
+			el = self._el,
+			tpl = opt.tpl,
+			re = /do\:(\w+)/ig,
+		    res,
+			bind = {};
+		while((res = re.exec(tpl)) != null) {
+		  var evt = res[1];
+		  if(!bind[evt]) {
+		    el.addEventListener(evt, function(e) {
+			  var type = e.type;
+			  for (var target=e.target; target && target!=this; target=target.parentNode) {
+			// loop parent nodes from the target to the delegation node
+			    var flag = false,
+					attrs = target.attributes,
+					func,
+					namespace;
+			    for(var j=0;j<attrs.length;j++) {
+				  var attr = attrs[j],
+					  res1 = new RegExp('do\\:'+type+'(\\.\\w+)?', 'ig').exec(attr.name);
+				  if(!!res1) {
+				    flag = true;
+					func = attr.value;
+					if(!!res1[1]) {
+					  namespace = res1[1].substring(1);
+					}
+					break;
+				  }
+				}
+			    if(!!func&&opt.func) {
+				  if(!!namespace) {
+				    if(_keyMapping[namespace.toUpperCase()]!==e.keyCode) {
+				      //console.log(e.keyCode);
+					  break;
+					}
+				  }
+				  var re1 = /(\w+)\(([^\)]*?)\)/i,
+					  res2 = re1.exec(func);
+				  if(!!res2) {
+				    if(res2[2].trim()==='') {
+				      opt.func[res2[1]].call(self._data, e);
+					} else {
+					  var params = res2[2].split(','),
+						  args = [],
+						  parent = target.parentNode,child;
+					  for(var i=0;i<params.length;i++) {
+					    var param = params[i].trim();
+						switch(param) {
+						  case '$index':
+							while(parent&&parent.tagName.toUpperCase()!=='DO-F') {
+							  child = parent;
+							  parent = parent.parentNode;
+							}
+							var i = 0;
+							while( (child = child.previousSibling) != null ) {
+							  i++;
+							}
+						    args[args.length]=i;
+						  break;
+						  default:
+						  args[args.length]=param;
+						}
+					  }
+				      opt.func[res2[1]].apply(self._data, args);
+					}
+					break;
+				  } else if (typeof opt.func[func]==='function') {
+				    opt.func[func].call(self._data, e);
+				    break;
+				  }
+				}
+			  }
+		    }, false);
+		  } else {
+		    bind[evt] = true;
+		  }
+		}
+	  },
+	  toString: function() {
+	    var self = this,
+			opt=self._opt,
+			tpl = opt.tpl,
+			d = opt.data;			
+	    return _applyTpl(tpl, d, opt.renderer);
+	  }
+	};
+    return {
 		diving:_diving,
 		applyTpl:_applyTpl,
 		applyRTpl:function(url, data, cb, renderer){
@@ -166,26 +456,16 @@
 			});
 		},
 		setDelimiters:function(opener, closer, tag) {
-			_opener = opener;
-			_closer = closer;
+			_op = opener;
+			_cl = closer;
 			tag = tag||'<tpl>';
-			_tag = tag.substring(1, tag.length-1);
-			_topener = tag.substring(0, 1);
-			_tcloser = tag.substring( tag.length-1);
-		}
+			_tg = tag.substring(1, tag.length-1);
+			_to = tag.substring(0, 1);
+			_tc = tag.substring( tag.length-1);
+		},
+		inst: function(opt) {
+		  return new Dotpl(opt);
+		},
+		constructor:Dotpl
 	};
-    var root = this,
-    previous_dotpl = root.dotpl;
-
-    if (typeof module !== 'undefined' && module.exports) {
-        module.exports = dotpl;
-    }
-    else {
-        root.dotpl = dotpl;
-    }
-
-    dotpl.noConflict = function () {
-        root.dotpl = previous_dotpl;
-        return dotpl;
-    };
-}).call(this);
+}));
